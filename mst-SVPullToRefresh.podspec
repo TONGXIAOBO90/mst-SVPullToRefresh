@@ -18,4 +18,5 @@ Pod::Spec.new do |s|
   s.author             = { "tongshi" => "email@address.com" }
   s.source       = { :git => "https://github.com/tongshi/mst-SVPullToRefresh.git", :tag => "0.0.1" }
   s.source_files  = "mst-SVPullToRefresh/"
+  s.requires_arc = true
 end
