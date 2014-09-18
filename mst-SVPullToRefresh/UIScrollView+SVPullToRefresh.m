@@ -57,7 +57,17 @@ static char UIScrollViewPullToRefreshView;
 - (void)addPullToRefreshWithActionHandler:(void (^)(void))actionHandler {
     
     if(!self.pullToRefreshView) {
-        SVPullToRefreshView *view = [[SVPullToRefreshView alloc] initWithFrame:CGRectMake(0, -SVPullToRefreshViewHeight, self.bounds.size.width, SVPullToRefreshViewHeight)];
+        float height = 0;
+        if ([self isKindOfClass:[UITableView class]]) {
+            UITableView *tableView = (UITableView*)self;
+            if (tableView.style == UITableViewStylePlain) {
+                height = SVPullToRefreshViewHeight;
+            }
+            else{
+                height = SVPullToRefreshViewHeight - 36;
+            }
+        }
+        SVPullToRefreshView *view = [[SVPullToRefreshView alloc] initWithFrame:CGRectMake(0, -height, self.bounds.size.width, SVPullToRefreshViewHeight)];
         view.pullToRefreshActionHandler = actionHandler;
         view.scrollView = self;
         [self addSubview:view];
@@ -254,7 +264,8 @@ static char UIScrollViewPullToRefreshView;
 
 - (void)scrollViewDidScroll:(CGPoint)contentOffset {
     if(self.state != SVPullToRefreshStateLoading) {
-        CGFloat scrollOffsetThreshold = self.frame.origin.y-self.originalTopInset;
+//        CGFloat scrollOffsetThreshold = self.frame.origin.y-self.originalTopInset;
+        CGFloat scrollOffsetThreshold = self.frame.origin.y;
         
         if(!self.scrollView.isDragging && self.state == SVPullToRefreshStateTriggered)
             self.state = SVPullToRefreshStateLoading;
