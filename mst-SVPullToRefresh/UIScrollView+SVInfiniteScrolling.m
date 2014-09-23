@@ -9,6 +9,7 @@
 
 #import <QuartzCore/QuartzCore.h>
 #import "UIScrollView+SVInfiniteScrolling.h"
+#import "LLARingSpinnerView.h"
 
 
 static CGFloat const SVInfiniteScrollingViewHeight = 60;
@@ -25,15 +26,18 @@ static CGFloat const SVInfiniteScrollingViewHeight = 60;
 
 @property (nonatomic, copy) void (^infiniteScrollingHandler)(void);
 
+@property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UIActivityIndicatorView *activityIndicatorView;
+@property (nonatomic, strong) LLARingSpinnerView *llARingSpinnerView;
 @property (nonatomic, readwrite) SVInfiniteScrollingState state;
 @property (nonatomic, strong) NSMutableArray *viewForState;
 @property (nonatomic, weak) UIScrollView *scrollView;
 @property (nonatomic, readwrite) CGFloat originalBottomInset;
 @property (nonatomic, assign) BOOL wasTriggeredByUser;
 @property (nonatomic, assign) BOOL isObserving;
+@property (nonatomic, strong) NSMutableArray *titles;
 
-- (void)resetScrollViewContentInset;
+//- (void)resetScrollViewContentInset;
 - (void)setScrollViewContentInsetForInfiniteScrolling;
 - (void)setScrollViewContentInset:(UIEdgeInsets)insets;
 
@@ -55,7 +59,6 @@ UIEdgeInsets scrollViewOriginalContentInsets;
     
     if(!self.infiniteScrollingView) {
         SVInfiniteScrollingView *view = [[SVInfiniteScrollingView alloc] initWithFrame:CGRectMake(0, self.contentSize.height, self.bounds.size.width, SVInfiniteScrollingViewHeight)];
-        
         view.infiniteScrollingHandler = actionHandler;
         view.scrollView = self;
         [self addSubview:view];
@@ -90,7 +93,7 @@ UIEdgeInsets scrollViewOriginalContentInsets;
       if (self.infiniteScrollingView.isObserving) {
         [self removeObserver:self.infiniteScrollingView forKeyPath:@"contentOffset"];
         [self removeObserver:self.infiniteScrollingView forKeyPath:@"contentSize"];
-        [self.infiniteScrollingView resetScrollViewContentInset];
+//        [self.infiniteScrollingView resetScrollViewContentInset];
         self.infiniteScrollingView.isObserving = NO;
       }
     }
@@ -98,7 +101,6 @@ UIEdgeInsets scrollViewOriginalContentInsets;
       if (!self.infiniteScrollingView.isObserving) {
         [self addObserver:self.infiniteScrollingView forKeyPath:@"contentOffset" options:NSKeyValueObservingOptionNew context:nil];
         [self addObserver:self.infiniteScrollingView forKeyPath:@"contentSize" options:NSKeyValueObservingOptionNew context:nil];
-        [self.infiniteScrollingView setScrollViewContentInsetForInfiniteScrolling];
         self.infiniteScrollingView.isObserving = YES;
           
         [self.infiniteScrollingView setNeedsLayout];
@@ -129,14 +131,18 @@ UIEdgeInsets scrollViewOriginalContentInsets;
     if(self = [super initWithFrame:frame]) {
         
         // default styling values
-        self.activityIndicatorViewStyle = UIActivityIndicatorViewStyleGray;
+        self.titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, 20)];
+        self.titleLabel.font = [UIFont systemFontOfSize:14];
+        self.titleLabel.textColor = [UIColor darkGrayColor];
+        self.titleLabel.textAlignment = NSTextAlignmentCenter;
+        [self addSubview:self.titleLabel];
+        
         self.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         self.state = SVInfiniteScrollingStateStopped;
         self.enabled = YES;
         
-        
-        
         self.viewForState = [NSMutableArray arrayWithObjects:@"", @"", @"", @"", nil];
+        self.titles = [NSMutableArray arrayWithObjects:@"上拉加载更多", @"松开以加载更多", @"正在加载更多···", @"加载完成", nil];
     }
     
     return self;
@@ -156,20 +162,28 @@ UIEdgeInsets scrollViewOriginalContentInsets;
 }
 
 - (void)layoutSubviews {
-    self.activityIndicatorView.center = CGPointMake(self.bounds.size.width/2, self.bounds.size.height/2);
+    self.llARingSpinnerView.center = CGPointMake(self.bounds.size.width/2.0, self.bounds.size.height/2.0 + 8);
+    self.titleLabel.text = [self.titles objectAtIndex:self.state];
+    NSLog(@"%f", self.scrollView.contentSize.height);
+    self.frame = CGRectMake(0, self.scrollView.contentSize.height-36, self.bounds.size.width, SVInfiniteScrollingViewHeight);
+    if (self.scrollView.contentSize.height < self.scrollView.frame.size.height) {
+        self.hidden = YES;
+    }
 }
 
 #pragma mark - Scroll View
 
 - (void)resetScrollViewContentInset {
     UIEdgeInsets currentInsets = self.scrollView.contentInset;
+    NSLog(@"bottom: %f", self.scrollView.contentInset.bottom);
     currentInsets.bottom = self.originalBottomInset;
     [self setScrollViewContentInset:currentInsets];
 }
 
 - (void)setScrollViewContentInsetForInfiniteScrolling {
     UIEdgeInsets currentInsets = self.scrollView.contentInset;
-    currentInsets.bottom = self.originalBottomInset + SVInfiniteScrollingViewHeight;
+    currentInsets.bottom = self.originalBottomInset + SVInfiniteScrollingViewHeight; //修改
+//    currentInsets.bottom = self.originalBottomInset;
     [self setScrollViewContentInset:currentInsets];
 }
 
@@ -187,40 +201,45 @@ UIEdgeInsets scrollViewOriginalContentInsets;
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {    
     if([keyPath isEqualToString:@"contentOffset"])
+    {
         [self scrollViewDidScroll:[[change valueForKey:NSKeyValueChangeNewKey] CGPointValue]];
+    }
     else if([keyPath isEqualToString:@"contentSize"]) {
+        self.frame = CGRectMake(0, self.scrollView.contentSize.height-36, self.bounds.size.width, SVInfiniteScrollingViewHeight);
         [self layoutSubviews];
-        self.frame = CGRectMake(0, self.scrollView.contentSize.height, self.bounds.size.width, SVInfiniteScrollingViewHeight);
     }
 }
 
 - (void)scrollViewDidScroll:(CGPoint)contentOffset {
     if(self.state != SVInfiniteScrollingStateLoading && self.enabled) {
         CGFloat scrollViewContentHeight = self.scrollView.contentSize.height;
-        CGFloat scrollOffsetThreshold = scrollViewContentHeight-self.scrollView.bounds.size.height;
+        CGFloat scrollOffsetThreshold = scrollViewContentHeight-self.scrollView.bounds.size.height + 30;
         
-        if(!self.scrollView.isDragging && self.state == SVInfiniteScrollingStateTriggered)
+        if(!self.scrollView.isDragging && self.state == SVInfiniteScrollingStateTriggered){
             self.state = SVInfiniteScrollingStateLoading;
-        else if(contentOffset.y > scrollOffsetThreshold && self.state == SVInfiniteScrollingStateStopped && self.scrollView.isDragging)
+        }
+        else if(contentOffset.y > scrollOffsetThreshold && self.state == SVInfiniteScrollingStateStopped && self.scrollView.isDragging){
             self.state = SVInfiniteScrollingStateTriggered;
-        else if(contentOffset.y < scrollOffsetThreshold  && self.state != SVInfiniteScrollingStateStopped)
+            [self layoutSubviews];
+        }
+        else if(contentOffset.y < scrollOffsetThreshold  && self.state != SVInfiniteScrollingStateStopped){
             self.state = SVInfiniteScrollingStateStopped;
+        }
+    }
+    else{
+        [self setScrollViewContentInsetForInfiniteScrolling];
     }
 }
 
 #pragma mark - Getters
 
-- (UIActivityIndicatorView *)activityIndicatorView {
-    if(!_activityIndicatorView) {
-        _activityIndicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
-        _activityIndicatorView.hidesWhenStopped = YES;
-        [self addSubview:_activityIndicatorView];
+- (LLARingSpinnerView *)llARingSpinnerView
+{
+    if (!_llARingSpinnerView) {
+        _llARingSpinnerView = [[LLARingSpinnerView alloc] initWithFrame:CGRectMake(0, 0, 18, 18)];
+        _llARingSpinnerView.tintColor = [UIColor colorWithRed:115.f/255 green:179.f/255 blue:25.f/255 alpha:1];
     }
-    return _activityIndicatorView;
-}
-
-- (UIActivityIndicatorViewStyle)activityIndicatorViewStyle {
-    return self.activityIndicatorView.activityIndicatorViewStyle;
+    return _llARingSpinnerView;
 }
 
 #pragma mark - Setters
@@ -256,6 +275,9 @@ UIEdgeInsets scrollViewOriginalContentInsets;
 
 - (void)stopAnimating {
     self.state = SVInfiniteScrollingStateStopped;
+    self.state = SVInfiniteScrollingStateFinished;
+    [self resetScrollViewContentInset];
+    [self layoutSubviews];
 }
 
 - (void)setState:(SVInfiniteScrollingState)newState {
@@ -287,14 +309,16 @@ UIEdgeInsets scrollViewOriginalContentInsets;
         
         switch (newState) {
             case SVInfiniteScrollingStateStopped:
-                [self.activityIndicatorView stopAnimating];
+                [self.llARingSpinnerView stopAnimating];
+                [self.llARingSpinnerView removeFromSuperview];
                 break;
                 
             case SVInfiniteScrollingStateTriggered:
                 break;
                 
             case SVInfiniteScrollingStateLoading:
-                [self.activityIndicatorView startAnimating];
+                [self.llARingSpinnerView startAnimating];
+                [self addSubview:self.llARingSpinnerView];
                 break;
         }
     }
