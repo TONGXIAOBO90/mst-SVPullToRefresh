@@ -60,9 +60,9 @@ UIEdgeInsets scrollViewOriginalContentInsets;
     if(!self.infiniteScrollingView) {
         SVInfiniteScrollingView *view = [[SVInfiniteScrollingView alloc] initWithFrame:CGRectMake(0, self.contentSize.height, self.bounds.size.width, SVInfiniteScrollingViewHeight)];
         view.infiniteScrollingHandler = actionHandler;
-        view.scrollView = self;
+        view.scrollView = self;;
         [self addSubview:view];
-        view.originalBottomInset = self.contentInset.bottom;
+        view.originalBottomInset = self.contentInset.bottom + 49;
         self.infiniteScrollingView = view;
         self.showsInfiniteScrolling = YES;
     }
@@ -163,10 +163,10 @@ UIEdgeInsets scrollViewOriginalContentInsets;
 - (void)layoutSubviews {
     self.llARingSpinnerView.center = CGPointMake(self.bounds.size.width/2.0, self.bounds.size.height/2.0 + 8);
     self.titleLabel.text = [self.titles objectAtIndex:self.state];
-    self.frame = CGRectMake(0, self.scrollView.contentSize.height + _originalBottomInset, self.bounds.size.width, SVInfiniteScrollingViewHeight);
-    if (self.scrollView.contentSize.height < self.scrollView.frame.size.height) {
-        self.hidden = YES;
-    }
+    self.frame = CGRectMake(0, self.scrollView.contentSize.height + _originalBottomInset - 64, self.bounds.size.width, SVInfiniteScrollingViewHeight);
+//    if (self.scrollView.contentSize.height < self.scrollView.frame.size.height) {
+//        self.hidden = YES;
+//    }
 }
 
 #pragma mark - Scroll View
@@ -174,7 +174,9 @@ UIEdgeInsets scrollViewOriginalContentInsets;
 - (void)resetScrollViewContentInset {
     UIEdgeInsets currentInsets = self.scrollView.contentInset;
     currentInsets.bottom = self.originalBottomInset;
-    [self setScrollViewContentInset:currentInsets];
+//    [self setScrollViewContentInset:currentInsets];
+    [self.scrollView setContentInset:currentInsets];
+    
 }
 
 - (void)setScrollViewContentInsetForInfiniteScrolling {
@@ -271,10 +273,9 @@ UIEdgeInsets scrollViewOriginalContentInsets;
 }
 
 - (void)stopAnimating {
-    self.state = SVInfiniteScrollingStateStopped;
     self.state = SVInfiniteScrollingStateFinished;
-    [self resetScrollViewContentInset];
     [self layoutSubviews];
+    [self resetScrollViewContentInset];
 }
 
 - (void)setState:(SVInfiniteScrollingState)newState {

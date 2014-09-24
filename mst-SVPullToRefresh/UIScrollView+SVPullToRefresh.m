@@ -57,7 +57,7 @@ static char UIScrollViewPullToRefreshView;
 - (void)addPullToRefreshWithActionHandler:(void (^)(void))actionHandler {
     
     if(!self.pullToRefreshView) {
-        float height = 0;
+        float height = SVPullToRefreshViewHeight;
         if ([self isKindOfClass:[UITableView class]]) {
             UITableView *tableView = (UITableView*)self;
             if (tableView.style == UITableViewStylePlain) {
